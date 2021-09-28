@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+
+  <rosparam command="load" file="$(find test_skeleton)/config/test_planning.yaml"/>
+  <include file="$(find sharework_cembre_moveit_config)/launch/demo.launch"/>
+
+  <node name="test_skeleton"
+        pkg="test_skeleton"
+        type="test_planning"
+        output="screen"
+        launch-prefix="gdb -ex run --args" >
+
+        <remap from="joint_target" to="joint_states"/>
+    </node>
+
+</launch>
