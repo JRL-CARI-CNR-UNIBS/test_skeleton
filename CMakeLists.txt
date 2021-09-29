@@ -29,3 +29,8 @@ add_dependencies(     test_planning ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin
 target_link_libraries(test_planning
   ${catkin_LIBRARIES}
   )
+  add_executable(       test_scaling src/test_scaling.cpp)
+  add_dependencies(     test_scaling ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+  target_link_libraries(test_scaling
+    ${catkin_LIBRARIES}
+    )

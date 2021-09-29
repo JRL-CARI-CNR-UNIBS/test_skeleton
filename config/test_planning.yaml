@@ -1,6 +1,6 @@
 n_query: 5
-n_repetitions: 10
-kind_test: skeleton
+n_repetitions: 100
+kind_test: scheletro
 start_query: 0
 
   # In Degree

@@ -69,12 +69,12 @@ bool computePath(ros::NodeHandle& nh, const Eigen::VectorXd& start_conf, const E
     ros::Time t0 = ros::Time::now();
 
     int stall_gen = 0;
-    int max_stall_gen = 200;
+    int max_stall_gen = 2000;
 
     std::mt19937 gen;
     std::uniform_int_distribution<> id = std::uniform_int_distribution<>(0, max_stall_gen);
 
-    for (unsigned int idx = 0; idx < 1000; idx++)
+    for (unsigned int idx = 0; idx < 100000; idx++)
     {
       if (ros::Time::now() - t0 > max_time)
         break;
@@ -218,6 +218,8 @@ int main(int argc, char **argv)
   disp->clearMarkers();
   ros::Duration(1).sleep();
 
+  int fail = 0;
+
   for(unsigned int j=start_query;j<n_query;j++)
   {
     std::string query = "query_";
@@ -264,6 +266,7 @@ int main(int argc, char **argv)
       if(!computePath(nh,start_conf,goal_conf,current_path,solver))
       {
         ROS_WARN("Solution not found skip!");
+        fail+=1;
         continue;
       }
 
@@ -289,6 +292,8 @@ int main(int argc, char **argv)
       ros::Duration(5.0).sleep();
     }
   }
+
+  ROS_INFO_STREAM("FAIL: "<<fail);
   return 0;
 }
 
