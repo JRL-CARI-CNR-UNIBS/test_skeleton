@@ -1,8 +1,11 @@
 #include <ros/ros.h>
+#include <graph_core/solvers/path_local_solver.h>
+#include <graph_core/solvers/path_solver.h>
 #include <graph_core/solvers/birrt.h>
 #include <graph_core/solvers/rrt_star.h>
 #include <graph_core/parallel_moveit_collision_checker.h>
 #include <graph_core/metrics.h>
+#include <graph_core/local_informed_sampler.h>
 #include <graph_core/parallel_moveit_collision_checker.h>
 #include <graph_core/graph/graph_display.h>
 #include <moveit/robot_state/robot_state.h>
@@ -16,6 +19,111 @@
 #include <rviz_visual_tools/rviz_visual_tools.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
+
+bool computePath(ros::NodeHandle& nh, const Eigen::VectorXd& start_conf, const Eigen::VectorXd& goal_conf, pathplan::PathPtr& solution, pathplan::TreeSolverPtr solver)
+{
+  pathplan::NodePtr start_node = std::make_shared<pathplan::Node>(start_conf);
+  pathplan::NodePtr goal_node = std::make_shared<pathplan::Node>(goal_conf);
+
+  solver->config(nh);
+  solver->addStart(start_node);
+  solver->addGoal(goal_node);
+
+  bool success = true;
+  if (!solver->solve(solution, 1000000))
+  {
+    ROS_INFO("No solutions found");
+    return false;
+  }
+
+  if(success)
+  {
+    pathplan::PathLocalOptimizer path_solver(solver->getChecker(), solver->getMetrics());
+    path_solver.config(nh);
+
+    solution->setTree(solver->getStartTree());
+    path_solver.setPath(solution);
+    path_solver.solve(solution);
+
+    solver->getSampler()->setCost(solution->cost());
+    solver->getStartTree()->addBranch(solution->getConnections());
+
+    pathplan::LocalInformedSamplerPtr local_sampler = std::make_shared<pathplan::LocalInformedSampler>(start_node->getConfiguration(), goal_node->getConfiguration(), solver->getSampler()->getLB(), solver->getSampler()->getUB());
+
+    for (unsigned int isol = 0; isol < solution->getConnections().size() - 1; isol++)
+    {
+      pathplan::ConnectionPtr conn = solution->getConnections().at(isol);
+      local_sampler->addBall(conn->getChild()->getConfiguration(), solution->cost() * 0.1);
+    }
+    local_sampler->setCost(solution->cost());
+
+    pathplan::RRTStar opt_solver(solver->getMetrics(), solver->getChecker(), local_sampler);
+    opt_solver.addStartTree(solver->getStartTree());
+    opt_solver.addGoal(goal_node);
+    opt_solver.config(nh);
+
+    std::vector<pathplan::NodePtr> white_list;
+    white_list.push_back(goal_node);
+
+    ros::Duration max_time(3);
+    ros::Time t0 = ros::Time::now();
+
+    int stall_gen = 0;
+    int max_stall_gen = 200;
+
+    std::mt19937 gen;
+    std::uniform_int_distribution<> id = std::uniform_int_distribution<>(0, max_stall_gen);
+
+    for (unsigned int idx = 0; idx < 1000; idx++)
+    {
+      if (ros::Time::now() - t0 > max_time)
+        break;
+
+      if (opt_solver.update(solution))
+      {
+        stall_gen = 0;
+        path_solver.setPath(solution);
+        solution->setTree(opt_solver.getStartTree());
+
+        local_sampler->setCost(solution->cost());
+        solver->getSampler()->setCost(solution->cost());
+        opt_solver.getStartTree()->purgeNodes( solver->getSampler(), white_list, true);
+
+        local_sampler->clearBalls();
+        for (unsigned int isol = 0; isol < solution->getConnections().size() - 1; isol++)
+        {
+          pathplan::ConnectionPtr conn = solution->getConnections().at(isol);
+
+          local_sampler->addBall(conn->getChild()->getConfiguration(), solution->cost() * 0.1);
+        }
+      }
+      else
+      {
+        opt_solver.getStartTree()->purgeNodes( solver->getSampler(), white_list, false);
+        stall_gen++;
+      }
+
+      if (idx % 10 == 0)
+
+        if (id(gen) < stall_gen)
+        {
+          opt_solver.setSampler( solver->getSampler());
+        }
+        else
+        {
+          opt_solver.setSampler(local_sampler);
+        }
+
+      if (stall_gen >= max_stall_gen)
+        break;
+    }
+
+    path_solver.setPath(solution);
+    path_solver.solve(solution);
+  }
+
+  return true;
+}
 
 int main(int argc, char **argv)
 {
@@ -144,17 +252,14 @@ int main(int argc, char **argv)
     {
       ROS_INFO_STREAM("Query: "<<query<< " repetition: "<<i);
       pathplan::SamplerPtr sampler = std::make_shared<pathplan::InformedSampler>(start_conf, goal_conf, lb, ub);
-      pathplan::BiRRTPtr solver = std::make_shared<pathplan::BiRRT>(metrics, checker, sampler);
+      pathplan::RRTPtr solver = std::make_shared<pathplan::RRT>(metrics, checker, sampler);
 
       pathplan::PathPtr current_path;
 
-      solver->config(nh);
-      solver->addStart(std::make_shared<pathplan::Node>(start_conf));
-      solver->addGoal(std::make_shared<pathplan::Node>(goal_conf));
-
-      if (!solver->solve(current_path, 100000))
+      if(!computePath(nh,start_conf,goal_conf,current_path,solver))
       {
-        ROS_INFO("No solutions found");
+        ROS_WARN("Solution not found skip!");
+        continue;
       }
 
       double cost2sent = current_path->cost();
