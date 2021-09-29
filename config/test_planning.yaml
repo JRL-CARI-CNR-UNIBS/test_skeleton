@@ -1,6 +1,6 @@
 n_query: 5
 n_repetitions: 10
-kind_test: cubo
+kind_test: skeleton
 start_query: 0
 
   # In Degree
