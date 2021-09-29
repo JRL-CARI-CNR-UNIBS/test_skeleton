@@ -245,14 +245,19 @@ int main(int argc, char **argv)
     bool start_in_collision = !checker->check(start_conf);
     bool goal_in_collision = !checker->check(goal_conf);
 
-    ROS_INFO_STREAM("START CONF: "<<start_conf.transpose()<< " COLLISION: "<< start_in_collision);
-    ROS_INFO_STREAM("GOAL CONF: "<<goal_conf.transpose()<< " COLLISION: "<< goal_in_collision);
+    ROS_INFO_STREAM("START CONf COLLISION: "<< start_in_collision);
+    ROS_INFO_STREAM("GOAL CONF COLLISION: "<< goal_in_collision);
+
+    if(goal_in_collision || start_in_collision)
+     {
+      return 0;
+    }
 
     for(unsigned int i=0;i<n_repetitions;i++)
     {
       ROS_INFO_STREAM("Query: "<<query<< " repetition: "<<i);
       pathplan::SamplerPtr sampler = std::make_shared<pathplan::InformedSampler>(start_conf, goal_conf, lb, ub);
-      pathplan::RRTPtr solver = std::make_shared<pathplan::RRT>(metrics, checker, sampler);
+      pathplan::BiRRTPtr solver = std::make_shared<pathplan::BiRRT>(metrics, checker, sampler);
 
       pathplan::PathPtr current_path;
 
