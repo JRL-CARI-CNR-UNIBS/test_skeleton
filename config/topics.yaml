@@ -1,0 +1,9 @@
+topics:
+- /safe_ovr_1
+
+#1) sharework_cembre_configurations fake.launch
+#2) ssh eulero@192.168.10.3, poi roslaunch sharework_cembre_sensors realsense.launch
+#3) i tuoi python
+#4) roslaunch sharework_cembre_safety thor_safety.launch
+# 5) roslaunch test_skeleton rosbag.launch
+#6) roslaunch sharework_cembre_demo_safety execute_trj.launch 

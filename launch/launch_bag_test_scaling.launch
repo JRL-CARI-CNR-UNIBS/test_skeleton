@@ -1,0 +1,6 @@
+<launch>
+  <arg name="file" default="$(find test_skeleton)/bag/test_scaling/cubone_poses_record.bag" />
+  <node pkg="rosbag" type="play" name="playback"  args="-l $(arg file) --topics /centroid_detection_rs1/poses ">
+    <remap from="/centroid_detection_rs1/poses" to="/poses"/>                      <!-- This does NOT remap. -->
+  </node>
+</launch>

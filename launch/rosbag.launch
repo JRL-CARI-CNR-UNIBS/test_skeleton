@@ -1,0 +1,11 @@
+<launch>
+
+   <node name="robot_record" pkg="remote_rosbag_record" type="record" respawn="true" output="screen">
+     <rosparam file="$(find test_skeleton)/config/topics.yaml"/>
+     <param name="prefix" value="test_skeleton1"/>
+     <param name="apped_date" value="true"/>
+     <remap from="start" to="start_log"/>
+     <remap from="stop" to="stop_log"/>
+   </node>
+
+</launch>

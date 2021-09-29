@@ -19,3 +19,7 @@ query_3:
 query_4:
   start_configuration:  [-57,-60,-137,-63,-88,-76]
   stop_configuration: [-57,-151,-112,-84,-88,-76]
+
+
+# 1) rosbag play skeleton_record.bag -l
+# 2) roslaunch test_skeleton test_planning.launch
